@@ -31,7 +31,7 @@ class VideoThread(QThread):
 class App(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Qt live label demo")
+        self.setWindowTitle("Pi cam feed")
         self.disply_width = 640
         self.display_height = 480
         # create the label that holds the image
