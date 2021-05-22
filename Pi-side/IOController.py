@@ -12,3 +12,6 @@ class IOController:
 
     def setLed(self, state):
         GPIO.output(LED_PIN, state)
+
+    def cleanIO(self):
+        GPIO.cleanup() 

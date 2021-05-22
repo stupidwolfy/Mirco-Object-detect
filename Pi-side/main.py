@@ -9,28 +9,46 @@ import importlib.util
 
 import socket
 import imagezmq
+from halo import Halo
 
 from IOController import IOController
 from VideoStream import VideoStream
+from Setting import Setting
 
+#load setting file
+S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all = Setting.loadSetting()
 
 # Define and parse input arguments
 parser = argparse.ArgumentParser()
+#parser.add_argument('--modeldir', help='Folder the .tflite file is located in',
+#                    required=True)
+#parser.add_argument('--graph', help='Name of the .tflite file, if different than detect.tflite',
+#                    default='detect.tflite')
+#parser.add_argument('--labels', help='Name of the labelmap file, if different than labelmap.txt',
+#                    default='labelmap.txt')
+#parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
+#                    default=0.5)
+#parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
+#                    default='800x600')
+#parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
+#                    action='store_true')
+#parser.add_argument('--trigger', help='Object to active action.',
+#                    default='cell phone,person')
+
 parser.add_argument('--modeldir', help='Folder the .tflite file is located in',
-                    required=True)
+                    default=S_MODEL_NAME)
 parser.add_argument('--graph', help='Name of the .tflite file, if different than detect.tflite',
-                    default='detect.tflite')
+                    default=S_GRAPH_NAME)
 parser.add_argument('--labels', help='Name of the labelmap file, if different than labelmap.txt',
-                    default='labelmap.txt')
+                    default=S_LABELMAP_NAME)
 parser.add_argument('--threshold', help='Minimum confidence threshold for displaying detected objects',
-                    default=0.5)
+                    default=S_min_conf_threshold)
 parser.add_argument('--resolution', help='Desired webcam resolution in WxH. If the webcam does not support the resolution entered, errors may occur.',
-                    default='800x600')
+                    default=str(S_imW)+"x"+str(S_imH))
 parser.add_argument('--edgetpu', help='Use Coral Edge TPU Accelerator to speed up detection',
                     action='store_true')
-
 parser.add_argument('--trigger', help='Object to active action.',
-                    default='cell phone,person')
+                    default=S_obj_trigger)
 
 args = parser.parse_args()
 
@@ -41,6 +59,8 @@ min_conf_threshold = float(args.threshold)
 resW, resH = args.resolution.split('x')
 imW, imH = int(resW), int(resH)
 use_TPU = args.edgetpu
+
+server_url = "tcp://192.168.1.26:5555"
 
 # Import TensorFlow libraries
 # If tflite_runtime is installed, import interpreter from tflite_runtime, else import from regular tensorflow
@@ -104,9 +124,11 @@ input_std = 127.5
 
 # custom variable
 dot_count = 1
-obj_find_atmp = 5 #attem to keep led on if obj go away
+#obj_find_atmp = 5 #attem to keep led on if obj go away
 obj_trigger = args.trigger.split(',')
-need_detect_all = False #Trigger when found all obj or just one
+need_detect_all = S_need_detect_all #Trigger when found all obj or just one
+
+spinner = Halo(text='Running', spinner='dots')
 
 # Initialize frame rate calculation
 frame_rate_calc = 1
@@ -119,7 +141,7 @@ videostream = VideoStream(resolution=(imW,imH),framerate=30).start()
 time.sleep(1)
 
 # Initialize video output
-sender = imagezmq.ImageSender(connect_to='tcp://192.168.1.26:5555')
+sender = imagezmq.ImageSender(connect_to=server_url)
 rpi_name = socket.gethostname() # send RPi hostname with each image
 
 # Initialize GPIO
@@ -128,7 +150,7 @@ ioController = IOController()
 
 
 def trigger_handle(obj_box):
-    print("Found| ", list(map(lambda x : labels[x] ,obj_box)))
+    print("  Found| ", list(map(lambda x : labels[x] ,obj_box)))
     if(need_detect_all):
         if(all(item in list(map(lambda x : labels[x] ,obj_box)) for item in obj_trigger)):
             print("action Trigged. (all)")
@@ -143,6 +165,7 @@ print("Init finished.")
 #print("Status: starting record", end="\r", flush=True)
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
+spinner.start()
 while True:
     obj_found_box = []
     #print("Status: recoding frame [",dot_count ,"]", end="\r", flush=True)
@@ -216,7 +239,9 @@ while True:
             break
 
     except KeyboardInterrupt:
+        spinner.stop()
         print("Status: exiting", end="\r", flush=True)
+        ioController.cleanIO()
         break
     
 # Clean up
