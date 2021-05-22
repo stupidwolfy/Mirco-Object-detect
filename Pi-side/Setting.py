@@ -13,23 +13,26 @@ S_imW = 800
 S_imH = 600
 S_obj_trigger = ""
 S_need_detect_all = False
+S_server_url = "tcp://192.168.1.26:5555"
 
 class Setting:
+    @staticmethod
     def loadSetting():
         try:
-            LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all = pickle.load(open(os.path.join(CMD_PATH,"setting.pickle"), "rb"))
-            return LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all
+            LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url = pickle.load(open(os.path.join(CMD_PATH,"setting.pickle"), "rb"))
+            return LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url 
         except (OSError, IOError) as e:
-            return saveSetting()
-    
+            return Setting.saveSetting()
+
+    @staticmethod
     def saveSetting():
-        data = [S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all]
+        data = [S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url]
         pickle.dump(data, open(os.path.join(CMD_PATH,"setting.pickle"), "wb"))
-        return S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all
+        return S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url
 
 #if run directly, act as setting input
 if __name__ == "__main__":
-    S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all = Setting.loadSetting()
+    S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url = Setting.loadSetting()
     try:
         print("============= Setting ============")
 
@@ -92,6 +95,11 @@ if __name__ == "__main__":
         print("Object target a,..(%s)\n\t\t  :" %S_obj_trigger, end="\r")
         temp = input("\t\t\t")
         S_obj_trigger = temp if temp else S_obj_trigger
+
+        #Server URL
+        print("Server url(%s)\n\t\t  :" %S_server_url, end="\r")
+        temp = input("\t\t\t")
+        S_server_url = temp if temp else S_server_url
 
         #Detect all
         print("Detect all? y/n(%s):" %S_need_detect_all, end="\r")
