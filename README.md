@@ -33,18 +33,18 @@
 ## Client side :computer:
 * ### Setup
     * (Optional) Create and use new virtual environment
-        ```bash
+        ```PowerShell
         pip3 install virtualenv
         python3 -m venv env
         ./env/Scripts/activate
         ```   
     * Install requirement packages
-        ```bash
+        ```PowerShell
         pip3 install -r requirements.txt
         ```
     
 
     * Run client script
-        ```bash
+        ```PowerShell
         python3 client_gui.py
         ```
