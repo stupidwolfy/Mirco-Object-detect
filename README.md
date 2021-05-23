@@ -42,8 +42,8 @@
         ```PowerShell
         pip3 install -r requirements.txt
         ```
-    
-
+        
+* ### Run
     * Run client script
         ```PowerShell
         python3 client_gui.py
