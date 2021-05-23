@@ -14,9 +14,10 @@ from halo import Halo
 from IOController import IOController
 from VideoStream import VideoStream
 from Setting import Setting
+from MqttController import MqttController
 
 #load setting file
-S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all = Setting.loadSetting()
+S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic = Setting.loadSetting()
 
 # Define and parse input arguments
 parser = argparse.ArgumentParser()
@@ -146,25 +147,31 @@ rpi_name = socket.gethostname() # send RPi hostname with each image
 
 # Initialize GPIO
 ioController = IOController()
+# Init Mqtt client
+mqttController = MqttController(S_mqtt_broker, S_mqtt_port, S_mqtt_topic)
 
 
 
 def trigger_handle(obj_box):
-    print("  Found| ", list(map(lambda x : labels[x] ,obj_box)))
-    if(need_detect_all):
-        if(all(item in list(map(lambda x : labels[x] ,obj_box)) for item in obj_trigger)):
-            print("action Trigged. (all)")
-            ioController.setLed(True)
-    else:
-        if(any(item in list(map(lambda x : labels[x] ,obj_box)) for item in obj_trigger)):
-            print("action Trigged. (any)")
-            ioController.setLed(True)
+    if obj_box:
+        print("  Found| ", list(map(lambda x : labels[x] ,obj_box)))
+        if(need_detect_all):
+            if(all(item in list(map(lambda x : labels[x] ,obj_box)) for item in obj_trigger)):
+                print("action Trigged. (all)")
+                ioController.setLed(False)
+                mqttController.sendMessage("Detected all in ["+",".join(obj_trigger)+ "]")
+        else:
+            if(any(item in list(map(lambda x : labels[x] ,obj_box)) for item in obj_trigger)):
+                print("action Trigged. (any)")
+                ioController.setLed(False)
+                mqttController.sendMessage("Detected Some of ["+",".join(obj_trigger)+"]")
 
 
 print("Init finished.")
 #print("Status: starting record", end="\r", flush=True)
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
+ioController.setLed(True)
 spinner.start()
 while True:
     obj_found_box = []

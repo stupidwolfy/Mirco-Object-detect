@@ -11,28 +11,31 @@ S_LABELMAP_NAME = "labelmap.txt"
 S_min_conf_threshold = 0.5
 S_imW = 800
 S_imH = 600
-S_obj_trigger = ""
+S_obj_trigger = "vase, bottle"
 S_need_detect_all = False
 S_server_url = "tcp://192.168.1.26:5555"
+S_mqtt_broker = "broker.mqttdashboard.com"
+S_mqtt_port = 1883
+S_mqtt_topic = "micro/iot1"
 
 class Setting:
     @staticmethod
     def loadSetting():
         try:
-            LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url = pickle.load(open(os.path.join(CMD_PATH,"setting.pickle"), "rb"))
-            return LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url 
+            LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url, mqtt_broker, mqtt_port, mqtt_topic = pickle.load(open(os.path.join(CMD_PATH,"setting.pickle"), "rb"))
+            return LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url, mqtt_broker, mqtt_port, mqtt_topic
         except (OSError, IOError) as e:
             return Setting.saveSetting()
 
     @staticmethod
     def saveSetting():
-        data = [S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url]
+        data = [S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic]
         pickle.dump(data, open(os.path.join(CMD_PATH,"setting.pickle"), "wb"))
-        return S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url
+        return S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic
 
 #if run directly, act as setting input
 if __name__ == "__main__":
-    S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url = Setting.loadSetting()
+    S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic = Setting.loadSetting()
     try:
         print("============= Setting ============")
 
@@ -109,6 +112,26 @@ if __name__ == "__main__":
                  S_need_detect_all = True
             elif temp.lower() == "n":
                  S_need_detect_all = False
+
+        #Mqtt broker
+        print("Mqtt broker(%s)\n\t\t  :" %S_mqtt_broker, end="\r")
+        temp = input("\t\t\t")
+        S_mqtt_broker = temp if temp else S_mqtt_broker
+
+        #Mqtt port
+        print("Mqtt port (%s):" %S_mqtt_port, end="\r")
+        while True:
+            try:
+                temp =input("\t\t\t")
+                S_mqtt_port = int(temp) if temp else S_mqtt_port
+                break
+            except ValueError:
+                print("Mqtt port (%s):              (Numer only!!!)" %S_mqtt_port, end="\r")
+
+        #Mqtt topic
+        print("Mqtt topic(%s)\n\t\t  :" %S_mqtt_topic, end="\r")
+        temp = input("\t\t\t")
+        S_mqtt_topic = temp if temp else S_mqtt_topic
 
         Setting.saveSetting()
         print()
