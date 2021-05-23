@@ -4,7 +4,7 @@
 ## Pi side :camera:
 * ### Setup
     * (Optional) Create and use new virtual environment
-        ```{python}
+        ```bash
         pip3 install virtualenv
         python3 -m venv env
         source ./venv/bin/activate
