@@ -22,7 +22,7 @@ class VideoStream:
 
     def start(self):
 	# Start the thread that reads frames from the video stream
-        Thread(target=self.update,args=()).start()
+        Thread(target=self.update,args=(), daemon=True).start()
         return self
 
     def update(self):

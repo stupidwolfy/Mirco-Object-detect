@@ -6,18 +6,23 @@ import numpy as np
 import sys
 import time
 import importlib.util
+import threading
 
 import socket
 import imagezmq
 from halo import Halo
+import zmq
+from func_timeout import func_timeout, FunctionTimedOut
+
 
 from IOController import IOController
 from VideoStream import VideoStream
 from Setting import Setting
 from MqttController import MqttController
+from WebRequestController import WebRequest
 
 #load setting file
-S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic = Setting.loadSetting()
+S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic, S_webRequest = Setting.loadSetting()
 
 # Define and parse input arguments
 parser = argparse.ArgumentParser()
@@ -61,7 +66,7 @@ resW, resH = args.resolution.split('x')
 imW, imH = int(resW), int(resH)
 use_TPU = args.edgetpu
 
-server_url = "tcp://192.168.1.26:5555"
+server_url = S_server_url
 
 # Import TensorFlow libraries
 # If tflite_runtime is installed, import interpreter from tflite_runtime, else import from regular tensorflow
@@ -123,6 +128,13 @@ floating_model = (input_details[0]['dtype'] == np.float32)
 input_mean = 127.5
 input_std = 127.5
 
+#Thread variable
+keep_runing = True
+G_frame = None
+G_newimg = False
+
+Timer1 = {"Time": 10, "isCooldown": False}
+
 # custom variable
 dot_count = 1
 #obj_find_atmp = 5 #attem to keep led on if obj go away
@@ -149,29 +161,68 @@ rpi_name = socket.gethostname() # send RPi hostname with each image
 ioController = IOController()
 # Init Mqtt client
 mqttController = MqttController(S_mqtt_broker, S_mqtt_port, S_mqtt_topic)
+# Init Web Request
+webRequest = WebRequest(S_webRequest)
 
 
-
-def trigger_handle(obj_box):
+def trigger_handle(obj_box, frame):
+    global Timer1
     if obj_box:
         print("  Found| ", list(map(lambda x : labels[x] ,obj_box)))
+        intersect_obj = set(obj_trigger).intersection(set(map(lambda x : labels[x] ,obj_box)))
+
         if(need_detect_all):
             if(all(item in list(map(lambda x : labels[x] ,obj_box)) for item in obj_trigger)):
-                print("action Trigged. (all)")
+                print("action Trigged. (all)"+ ",".join(obj_trigger))
                 ioController.setLed(False)
-                mqttController.sendMessage("Detected all in ["+",".join(obj_trigger)+ "]")
+
+                if not Timer1["isCooldown"]:
+                    mqttController.sendMessage("Detected all ["+",".join(obj_trigger)+ "]")
+                    data = {"content" : "Detected all ["+",".join(obj_trigger)+ "]"}
+                    imencoded = cv2.imencode(".jpg", frame)[1]
+                    webRequest.sendPost(data, imencoded)
+                    Timer1["isCooldown"] = True
         else:
             if(any(item in list(map(lambda x : labels[x] ,obj_box)) for item in obj_trigger)):
                 print("action Trigged. (any)")
                 ioController.setLed(False)
-                mqttController.sendMessage("Detected Some of ["+",".join(obj_trigger)+"]")
 
+                if not Timer1["isCooldown"]:
+                    mqttController.sendMessage("Detected Some ["+",".join(intersect_obj)+"]")
+                    data = {"content" : "Detected Some ["+",".join(intersect_obj)+"]"}
+                    imencoded = cv2.imencode(".jpg", frame)[1]
+                    webRequest.sendPost(data, imencoded)
+                    Timer1["isCooldown"] = True
+
+def imzmq_loop():
+    global G_newimg
+    while keep_runing:
+        try:
+            if G_newimg :
+                sender.send_image(rpi_name, G_frame)
+                G_newimg = False
+            time.sleep(1)
+        except zmq.error.ContextTerminated:
+            continue
+
+
+def timer_loop():
+    global Timer1
+    while keep_runing:
+        if Timer1["isCooldown"]:
+            time.sleep(Timer1["Time"])
+            Timer1["isCooldown"] = False  #timer is cooled down, ready
+
+zmqThread = threading.Thread(target=imzmq_loop, daemon=True)
+timerThread = threading.Thread(target=timer_loop, daemon=True)
 
 print("Init finished.")
 #print("Status: starting record", end="\r", flush=True)
 #for frame1 in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):
 
 ioController.setLed(True)
+timerThread.start()
+zmqThread.start()
 spinner.start()
 while True:
     obj_found_box = []
@@ -229,11 +280,15 @@ while True:
         # Draw framerate in corner of frame
         cv2.putText(frame,'FPS: {0:.2f}'.format(frame_rate_calc),(30,50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,255,0),2,cv2.LINE_AA)
         
-        trigger_handle(obj_found_box)
+        trigger_handle(obj_found_box, frame)
         # All the results have been drawn on the frame, so it's time to display it.
         #cv2.imshow('Object detector', frame)
         #out.write(frame)
-        sender.send_image(rpi_name, frame)
+        
+        #sender.send_image(rpi_name, frame)
+        #New Image is ready
+        G_frame = frame
+        G_newimg = True
     
         # Calculate framerate
         t2 = cv2.getTickCount()
@@ -250,11 +305,16 @@ while True:
         print("Status: exiting", end="\r", flush=True)
         ioController.cleanIO()
         break
-    
+
+print("Status: Cleaning up, please wait...", end="\r", flush=True)
 # Clean up
+keep_runing =False
 out.release()
-cv2.destroyAllWindows()
 videostream.stop()
+#sender.close()
+timerThread.join()
+zmqThread.join(5)
+cv2.destroyAllWindows()
 print("                                              ", end="\r", flush=True)
 print("Status: finished")
 print()

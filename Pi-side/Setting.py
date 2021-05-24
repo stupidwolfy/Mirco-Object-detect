@@ -17,25 +17,26 @@ S_server_url = "tcp://192.168.1.26:5555"
 S_mqtt_broker = "broker.mqttdashboard.com"
 S_mqtt_port = 1883
 S_mqtt_topic = "micro/iot1"
+S_webRequest = ""
 
 class Setting:
     @staticmethod
     def loadSetting():
         try:
-            LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url, mqtt_broker, mqtt_port, mqtt_topic = pickle.load(open(os.path.join(CMD_PATH,"setting.pickle"), "rb"))
-            return LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url, mqtt_broker, mqtt_port, mqtt_topic
+            LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url, mqtt_broker, mqtt_port, mqtt_topic, webRequest = pickle.load(open(os.path.join(CMD_PATH,"setting.pickle"), "rb"))
+            return LED_PIN, MODEL_NAME, GRAPH_NAME, LABELMAP_NAME, min_conf_threshold, imW, imH, obj_trigger, need_detect_all, server_url, mqtt_broker, mqtt_port, mqtt_topic, webRequest
         except (OSError, IOError) as e:
             return Setting.saveSetting()
 
     @staticmethod
     def saveSetting():
-        data = [S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic]
+        data = [S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic, S_webRequest]
         pickle.dump(data, open(os.path.join(CMD_PATH,"setting.pickle"), "wb"))
-        return S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic
+        return S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic, S_webRequest
 
 #if run directly, act as setting input
 if __name__ == "__main__":
-    S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic = Setting.loadSetting()
+    S_LED_PIN, S_MODEL_NAME, S_GRAPH_NAME, S_LABELMAP_NAME, S_min_conf_threshold, S_imW, S_imH, S_obj_trigger, S_need_detect_all, S_server_url, S_mqtt_broker, S_mqtt_port, S_mqtt_topic, S_webRequest = Setting.loadSetting()
     try:
         print("============= Setting ============")
 
@@ -132,6 +133,11 @@ if __name__ == "__main__":
         print("Mqtt topic(%s)\n\t\t  :" %S_mqtt_topic, end="\r")
         temp = input("\t\t\t")
         S_mqtt_topic = temp if temp else S_mqtt_topic
+
+        #Webhook Url
+        print("Web request url(%s)\n\t\t:" %S_webRequest, end="\r")
+        temp = input("\t\t\t")
+        S_webRequest = temp if temp else S_webRequest
 
         Setting.saveSetting()
         print()
