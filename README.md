@@ -1,5 +1,6 @@
 # Mirco-Object-detect
- Microcontroller 2020 Project
+ Microcontroller 2020 Object detection Project
+ ![overall](overall.png)
  
 ## Pi side :camera:
 * ### Setup
